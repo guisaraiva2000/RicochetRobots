@@ -72,33 +72,65 @@ def parse_instance(filename: str) -> Board:
     return Board(robot_pos, target_pos, target_color, barriers, dim, barriers_number)
 
 
+def actions_aux(color: str, state: RRState):
+    possible_individual_actions = []
+
+    pos = state.board.robot_pos[color]
+    line = pos[0]
+    col = pos[1]
+    barriers = state.board.barriers_pos
+    dim = state.board.dimension
+
+    def is_wall(mov):
+        if (line, col) in barriers and barriers[(line, col)] == mov:
+            return True
+        else:
+            if mov == 'u':
+                return (line - 1, col) in barriers and barriers[(line - 1, col)] == 'd'
+            elif mov == 'd':
+                return (line + 1, col) in barriers and barriers[(line + 1, col)] == 'u'
+            elif mov == 'r':
+                return (line, col + 1) in barriers and barriers[(line, col + 1)] == 'l'
+            elif mov == 'l':
+                return (line, col - 1) in barriers and barriers[(line, col - 1)] == 'r'
+
+    def has_robot(mov):
+        colors = ['G', 'R', 'B', 'Y']
+
+        if mov == 'u':
+            for c in colors:
+                if (line - 1, col) == state.board.robot_pos[c]:
+                    return True
+        elif mov == 'd':
+            for c in colors:
+                if (line + 1, col) == state.board.robot_pos[c]:
+                    return True
+        elif mov == 'r':
+            for c in colors:
+                if (line, col + 1) == state.board.robot_pos[c]:
+                    return True
+        elif mov == 'l':
+            for c in colors:
+                if (line, col - 1) == state.board.robot_pos[c]:
+                    return True
+
+    if line != 1 and not is_wall('u') and not has_robot('u'):
+        possible_individual_actions.append((color, 'u'))
+    if line != dim and not is_wall('d') and not has_robot('d'):
+        possible_individual_actions.append((color, 'd'))
+    if col != dim and not is_wall('r') and not has_robot('r'):
+        possible_individual_actions.append((color, 'r'))
+    if col != 1 and not is_wall('l') and not has_robot('l'):
+        possible_individual_actions.append((color, 'l'))
+
+    return possible_individual_actions
+
+
 class RicochetRobots(Problem):
-    def __init__(self, board: Board, initial, goal):
+    def __init__(self, board: Board):
         """ O construtor especifica o estado inicial. """
 
-        self.initial = initial
-        self.goal = goal
-
-    def actions_aux(self, color: str, state: RRState):
-        possible_individual_actions = []
-
-        pos = state.board.robot_pos[color]
-        line = pos[0]
-        col = pos[1]
-        barriers = state.board.barriers_pos
-        dim = state.board.dimension
-
-        # TODO falta as conficoes de as paredes estarem nas paredes vizinhas
-        if line != 1 and not ((line - 1, col) in barriers and barriers[(line - 1, col)] == 'd'):
-            possible_individual_actions.append((color, 'u'))
-        if line != dim and not ((line + 1, col) in barriers and barriers[(line + 1, col)] == 'u'):
-            possible_individual_actions.append((color, 'd'))
-        if col != dim and not ((line, col + 1) in barriers and barriers[(line, col + 1)] == 'l'):
-            possible_individual_actions.append((color, 'r'))
-        if col != 1 and not ((line, col - 1) in barriers and barriers[(line, col - 1)] == 'r'):
-            possible_individual_actions.append((color, 'l'))
-
-        return possible_individual_actions
+        self.initial = board
 
     def actions(self, state: RRState):
         """ Retorna uma lista de ações que podem ser executadas a
@@ -108,10 +140,9 @@ class RicochetRobots(Problem):
         possible_actions = []
 
         for color in colors:
-            possible_actions.extend(self.actions_aux(color, state))
+            possible_actions.extend(actions_aux(color, state))
 
         return possible_actions
-
 
     def result(self, state: RRState, action):
         """ Retorna o estado resultante de executar a 'action' sobre
@@ -125,8 +156,12 @@ class RicochetRobots(Problem):
         """ Retorna True se e só se o estado passado como argumento é
         um estado objetivo. Deve verificar se o alvo e o robô da
         mesma cor ocupam a mesma célula no tabuleiro. """
-        # TODO
-        pass
+
+        target = state.board.target_pos
+        target_color = state.board.target_color
+        robot_pos = state.board.robot_position(target_color)
+
+        return robot_pos == target
 
     def h(self, node: Node):
         """ Função heuristica utilizada para a procura A*. """
@@ -143,7 +178,7 @@ if __name__ == "__main__":
     # Ler tabuleiro do ficheiro i1.txt:
     boardd = parse_instance('i1.txt')
     # Criar uma instância de RicochetRobots:
-    problem = RicochetRobots(boardd, 0, 0)
+    problem = RicochetRobots(boardd, 0)
     # Criar um estado com a configuração inicial:
     initial_state = RRState(boardd)
 
