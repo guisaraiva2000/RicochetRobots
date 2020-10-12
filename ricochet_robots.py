@@ -38,7 +38,7 @@ class Board:
 
     def robot_position(self, robot: str):
         """ Devolve a posição atual do robô passado como argumento. """
-        return self.robot_pos[robot]
+        return tuple(self.robot_pos[robot])
 
     def set_robot_position(self, robot: str, new_pos):
         """ Muda a posição do robô passado como argumento. """
@@ -57,7 +57,7 @@ def parse_instance(filename: str) -> Board:
 
     for i in range(dim):
         file_buf.append(f.readline())
-        robot_pos[file_buf[i][0]] = (int(file_buf[i][2]), int(file_buf[i][4]))
+        robot_pos[file_buf[i][0]] = [int(file_buf[i][2]), int(file_buf[i][4])]
     file_buf.clear()
 
     buf = f.readline()
@@ -99,19 +99,19 @@ def actions_aux(color: str, state: RRState):
 
         if mov == 'u':
             for c in colors:
-                if (line - 1, col) == state.board.robot_pos[c]:
+                if (line - 1, col) == state.board.robot_position(c):
                     return True
         elif mov == 'd':
             for c in colors:
-                if (line + 1, col) == state.board.robot_pos[c]:
+                if (line + 1, col) == state.board.robot_position(c):
                     return True
         elif mov == 'r':
             for c in colors:
-                if (line, col + 1) == state.board.robot_pos[c]:
+                if (line, col + 1) == state.board.robot_position(c):
                     return True
         elif mov == 'l':
             for c in colors:
-                if (line, col - 1) == state.board.robot_pos[c]:
+                if (line, col - 1) == state.board.robot_position(c):
                     return True
 
     if line != 1 and not is_wall('u') and not has_robot('u'):
@@ -149,8 +149,21 @@ class RicochetRobots(Problem):
         'state' passado como argumento. A ação retornada deve ser uma
         das presentes na lista obtida pela execução de
         self.actions(state). """
-        # TODO
-        pass
+
+        color = action[0]
+        mov = action[1]
+
+        while action in self.actions(state):
+            if mov == 'u':
+                state.board.robot_pos[color][0] -= 1
+            elif mov == 'd':
+                state.board.robot_pos[color][0] += 1
+            elif mov == 'r':
+                state.board.robot_pos[color][1] += 1
+            elif mov == 'l':
+                state.board.robot_pos[color][1] -= 1
+
+        return state
 
     def goal_test(self, state: RRState):
         """ Retorna True se e só se o estado passado como argumento é
@@ -175,14 +188,25 @@ if __name__ == "__main__":
     # Usar uma técnica de procura para resolver a instância,
     # Retirar a solução a partir do nó resultante,
     # Imprimir para o standard output no formato indicado.
-    # Ler tabuleiro do ficheiro i1.txt:
-    boardd = parse_instance('i1.txt')
-    # Criar uma instância de RicochetRobots:
-    problem = RicochetRobots(boardd, 0)
-    # Criar um estado com a configuração inicial:
-    initial_state = RRState(boardd)
 
-    print(problem.actions(initial_state))
+    # Ler tabuleiro do ficheiro "i1.txt":
+    board = parse_instance("i1.txt")
+    # Criar uma instância de RicochetRobots:
+    problem = RicochetRobots(board)
+    # Criar um estado com a configuração inicial:
+    s0 = RRState(board)
+    # Aplicar as ações que resolvem a instância
+    s1 = problem.result(s0, ('B', 'l'))
+    s2 = problem.result(s1, ('Y', 'u'))
+    s3 = problem.result(s2, ('R', 'r'))
+    s4 = problem.result(s3, ('R', 'u'))
+    # Verificar que o robô está no alvo:
+    print(problem.goal_test(s4))
+    print(s4.board.robot_position('R'))
+
+
+
+
 
 
 
