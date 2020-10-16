@@ -130,7 +130,11 @@ class RicochetRobots(Problem):
     def __init__(self, board: Board):
         """ O construtor especifica o estado inicial. """
 
-        self.initial = board
+        self.initial = RRState(board)
+        self.goal = board.target_pos
+        super().__init__(self.initial, self.goal)
+        self.mov_buf = []
+
 
     def actions(self, state: RRState):
         """ Retorna uma lista de ações que podem ser executadas a
@@ -178,8 +182,13 @@ class RicochetRobots(Problem):
 
     def h(self, node: Node):
         """ Função heuristica utilizada para a procura A*. """
-        # TODO
-        pass
+        target_color = node.state.board.target_color
+
+        # Manhattan Heuristic Function
+        x1, y1 = node.state.board.robot_position(target_color)
+        x2, y2 = self.goal
+
+        return abs(x2 - x1) + abs(y2 - y1)
 
 
 if __name__ == "__main__":
@@ -191,18 +200,12 @@ if __name__ == "__main__":
 
     # Ler tabuleiro do ficheiro "i1.txt":
     board = parse_instance("i1.txt")
+
     # Criar uma instância de RicochetRobots:
     problem = RicochetRobots(board)
-    # Criar um estado com a configuração inicial:
-    s0 = RRState(board)
-    # Aplicar as ações que resolvem a instância
-    s1 = problem.result(s0, ('B', 'l'))
-    s2 = problem.result(s1, ('Y', 'u'))
-    s3 = problem.result(s2, ('R', 'r'))
-    s4 = problem.result(s3, ('R', 'u'))
-    # Verificar que o robô está no alvo:
-    print(problem.goal_test(s4))
-    print(s4.board.robot_position('R'))
+
+    # Obter o nó solução usando a procura A*:
+    solution_node = breadth_first_tree_search(problem)
 
 
 
