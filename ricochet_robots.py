@@ -5,10 +5,12 @@
 # Grupo 00:
 # 00000 Nome1
 # 00000 Nome2
+import random
 
 from search import Problem, Node, astar_search, breadth_first_tree_search, \
-    depth_first_tree_search, greedy_search
+    depth_first_tree_search, greedy_search, InstrumentedProblem
 import sys
+import copy
 
 
 class RRState:
@@ -55,7 +57,7 @@ def parse_instance(filename: str) -> Board:
     barriers = {}
     robot_pos = {}
 
-    for i in range(dim):
+    for i in range(4):
         file_buf.append(f.readline())
         robot_pos[file_buf[i][0]] = [int(file_buf[i][2]), int(file_buf[i][4])]
     file_buf.clear()
@@ -95,7 +97,8 @@ def actions_aux(color: str, state: RRState):
                 return (line, col - 1) in barriers and barriers[(line, col - 1)] == 'r'
 
     def has_robot(mov):
-        colors = ['G', 'R', 'B', 'Y']
+        colors = ['B', 'Y', 'R', 'G']
+        colors.remove(color)
 
         if mov == 'u':
             for c in colors:
@@ -132,15 +135,13 @@ class RicochetRobots(Problem):
 
         self.initial = RRState(board)
         self.goal = board.target_pos
-        super().__init__(self.initial, self.goal)
-        self.mov_buf = []
-
+        super().__init__(initial=self.initial, goal=self.goal)
 
     def actions(self, state: RRState):
         """ Retorna uma lista de ações que podem ser executadas a
         partir do estado passado como argumento. """
 
-        colors = ['G', 'R', 'B', 'Y']
+        colors = ['Y', 'R', 'G', 'B']   # se tiver lento, comercar pelo target !!
         possible_actions = []
 
         for color in colors:
@@ -157,28 +158,29 @@ class RicochetRobots(Problem):
         color = action[0]
         mov = action[1]
 
-        while action in self.actions(state):
-            if mov == 'u':
-                state.board.robot_pos[color][0] -= 1
-            elif mov == 'd':
-                state.board.robot_pos[color][0] += 1
-            elif mov == 'r':
-                state.board.robot_pos[color][1] += 1
-            elif mov == 'l':
-                state.board.robot_pos[color][1] -= 1
+        new_state = copy.deepcopy(state)
 
-        return state
+        while action in actions_aux(color, new_state):  # se tiver lento mudar para action_aux !!!!!
+            if mov == 'u':
+                new_state.board.robot_pos[color][0] -= 1
+            elif mov == 'd':
+                new_state.board.robot_pos[color][0] += 1
+            elif mov == 'r':
+                new_state.board.robot_pos[color][1] += 1
+            elif mov == 'l':
+                new_state.board.robot_pos[color][1] -= 1
+
+        return new_state
 
     def goal_test(self, state: RRState):
         """ Retorna True se e só se o estado passado como argumento é
         um estado objetivo. Deve verificar se o alvo e o robô da
         mesma cor ocupam a mesma célula no tabuleiro. """
 
-        target = state.board.target_pos
         target_color = state.board.target_color
         robot_pos = state.board.robot_position(target_color)
 
-        return robot_pos == target
+        return robot_pos == self.goal
 
     def h(self, node: Node):
         """ Função heuristica utilizada para a procura A*. """
@@ -192,20 +194,41 @@ class RicochetRobots(Problem):
 
 
 if __name__ == "__main__":
-    # TODO:
     # Ler o ficheiro de input de sys.argv[1],
     # Usar uma técnica de procura para resolver a instância,
     # Retirar a solução a partir do nó resultante,
     # Imprimir para o standard output no formato indicado.
 
     # Ler tabuleiro do ficheiro "i1.txt":
-    board = parse_instance("i1.txt")
+    board = parse_instance(sys.argv[1])
 
     # Criar uma instância de RicochetRobots:
     problem = RicochetRobots(board)
 
     # Obter o nó solução usando a procura A*:
-    solution_node = breadth_first_tree_search(problem)
+    solution_node = astar_search(problem)
+
+    solution_actions = []
+    if solution_node:
+        solution_actions.insert(0, solution_node.action)
+        if solution_node.parent:
+            parent = solution_node.parent
+        while parent.action:
+            solution_actions.insert(0, parent.action)
+            parent = parent.parent
+
+    print(len(solution_actions))
+    for action in solution_actions:
+        print(action[0] + ' ' + action[1])
+
+
+
+
+
+
+
+
+
 
 
 
