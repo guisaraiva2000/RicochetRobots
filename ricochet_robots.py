@@ -141,7 +141,7 @@ class RicochetRobots(Problem):
         """ Retorna uma lista de ações que podem ser executadas a
         partir do estado passado como argumento. """
 
-        colors = ['Y', 'R', 'G', 'B']   # se tiver lento, comercar pelo target !!
+        colors = ['Y', 'R', 'G', 'B']
         possible_actions = []
 
         for color in colors:
@@ -160,7 +160,8 @@ class RicochetRobots(Problem):
 
         new_state = copy.deepcopy(state)
 
-        while action in actions_aux(color, new_state):  # se tiver lento mudar para action_aux !!!!!
+        while action in self.actions(new_state):   #--> Este e' mais lento que o action_aux
+        #while action in actions_aux(color, new_state):
             if mov == 'u':
                 new_state.board.robot_pos[color][0] -= 1
             elif mov == 'd':
@@ -184,13 +185,16 @@ class RicochetRobots(Problem):
 
     def h(self, node: Node):
         """ Função heuristica utilizada para a procura A*. """
-        target_color = node.state.board.target_color
 
-        # Manhattan Heuristic Function
-        x1, y1 = node.state.board.robot_position(target_color)
+        if node.action:
+            x1, y1 = node.state.board.robot_position(node.action[0])
+        else:
+            target_color = node.state.board.target_color
+            x1, y1 = node.state.board.robot_position(target_color)
+
         x2, y2 = self.goal
 
-        return abs(x2 - x1) + abs(y2 - y1)
+        return abs(x2 - x1) + abs(y2 - y1)  # Manhattan Heuristic Function
 
 
 if __name__ == "__main__":
@@ -201,22 +205,20 @@ if __name__ == "__main__":
 
     # Ler tabuleiro do ficheiro "i1.txt":
     board = parse_instance(sys.argv[1])
+    #board = parse_instance("instances/i10.txt")
 
     # Criar uma instância de RicochetRobots:
     problem = RicochetRobots(board)
 
     # Obter o nó solução usando a procura A*:
     solution_node = astar_search(problem)
-
+    
     solution_actions = []
-    if solution_node:
-        solution_actions.insert(0, solution_node.action)
-        if solution_node.parent:
-            parent = solution_node.parent
-        while parent.action:
-            solution_actions.insert(0, parent.action)
-            parent = parent.parent
 
+    while solution_node.action:
+        solution_actions.insert(0, solution_node.action)
+        solution_node = solution_node.parent
+    
     print(len(solution_actions))
     for action in solution_actions:
         print(action[0] + ' ' + action[1])
