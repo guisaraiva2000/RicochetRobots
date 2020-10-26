@@ -2,13 +2,11 @@
 # Devem alterar as classes e funções neste ficheiro de acordo com as instruções do enunciado.
 # Além das funções e classes já definidas, podem acrescentar outras que considerem pertinentes.
 
-# Grupo 00:
-# 00000 Nome1
-# 00000 Nome2
-import random
+# Grupo 12:
+# 93717 Guilherme Saraiva
+# 93756 Sara Ferreira
 
-from search import Problem, Node, astar_search, breadth_first_tree_search, \
-    depth_first_tree_search, greedy_search, InstrumentedProblem
+from search import Problem, Node, recursive_best_first_search
 import sys
 import copy
 
@@ -42,10 +40,6 @@ class Board:
         """ Devolve a posição atual do robô passado como argumento. """
         return tuple(self.robot_pos[robot])
 
-    def set_robot_position(self, robot: str, new_pos):
-        """ Muda a posição do robô passado como argumento. """
-        self.robot_pos[robot] = new_pos
-
 
 def parse_instance(filename: str) -> Board:
     """ Lê o ficheiro cujo caminho é passado como argumento e retorna
@@ -54,8 +48,8 @@ def parse_instance(filename: str) -> Board:
     f = open(filename, "r")
     dim = int(f.readline())
     file_buf = []
-    barriers = {}
-    robot_pos = {}
+    barriers = {}  # pos: [sides]
+    robot_pos = {}  # color: pos
 
     for i in range(4):
         file_buf.append(f.readline())
@@ -69,7 +63,10 @@ def parse_instance(filename: str) -> Board:
     barriers_number = int(f.readline())
     for i in range(barriers_number):
         file_buf.append(f.readline())
-        barriers[(int(file_buf[i][0]), int(file_buf[i][2]))] = file_buf[i][4]
+        if (int(file_buf[i][0]), int(file_buf[i][2])) in barriers:
+            barriers[(int(file_buf[i][0]), int(file_buf[i][2]))].append(file_buf[i][4])
+        else:
+            barriers[(int(file_buf[i][0]), int(file_buf[i][2]))] = [file_buf[i][4]]
 
     return Board(robot_pos, target_pos, target_color, barriers, dim, barriers_number)
 
@@ -84,20 +81,20 @@ def actions_aux(color: str, state: RRState):
     dim = state.board.dimension
 
     def is_wall(mov):
-        if (line, col) in barriers and barriers[(line, col)] == mov:
+        if (line, col) in barriers and mov in barriers[(line, col)]:
             return True
         else:
             if mov == 'u':
-                return (line - 1, col) in barriers and barriers[(line - 1, col)] == 'd'
+                return (line - 1, col) in barriers and 'd' in barriers[(line - 1, col)]
             elif mov == 'd':
-                return (line + 1, col) in barriers and barriers[(line + 1, col)] == 'u'
+                return (line + 1, col) in barriers and 'u' in barriers[(line + 1, col)]
             elif mov == 'r':
-                return (line, col + 1) in barriers and barriers[(line, col + 1)] == 'l'
+                return (line, col + 1) in barriers and 'l' in barriers[(line, col + 1)]
             elif mov == 'l':
-                return (line, col - 1) in barriers and barriers[(line, col - 1)] == 'r'
+                return (line, col - 1) in barriers and 'r' in barriers[(line, col - 1)]
 
     def has_robot(mov):
-        colors = ['B', 'Y', 'R', 'G']
+        colors = ['Y', 'G', 'R', 'B']
         colors.remove(color)
 
         if mov == 'u':
@@ -129,6 +126,18 @@ def actions_aux(color: str, state: RRState):
     return possible_individual_actions
 
 
+def print_soltuion(solution_n):
+    solution_actions = []
+
+    while solution_n.action:
+        solution_actions.insert(0, solution_n.action)
+        solution_n = solution_n.parent
+
+    print(len(solution_actions))
+    for action in solution_actions:
+        print(action[0] + ' ' + action[1])
+
+
 class RicochetRobots(Problem):
     def __init__(self, board: Board):
         """ O construtor especifica o estado inicial. """
@@ -141,7 +150,7 @@ class RicochetRobots(Problem):
         """ Retorna uma lista de ações que podem ser executadas a
         partir do estado passado como argumento. """
 
-        colors = ['Y', 'R', 'G', 'B']
+        colors = ['G', 'R', 'B', 'Y']
         possible_actions = []
 
         for color in colors:
@@ -158,10 +167,10 @@ class RicochetRobots(Problem):
         color = action[0]
         mov = action[1]
 
-        new_state = copy.deepcopy(state)
+        new_state = copy.deepcopy(state)  # copy actual state to a new state to be modified
 
-        while action in self.actions(new_state):   #--> Este e' mais lento que o action_aux
-        #while action in actions_aux(color, new_state):
+        # while action in self.actions(new_state):  # --> Este e' mais lento que o action_aux
+        while action in actions_aux(color, new_state):
             if mov == 'u':
                 new_state.board.robot_pos[color][0] -= 1
             elif mov == 'd':
@@ -203,27 +212,17 @@ if __name__ == "__main__":
     # Retirar a solução a partir do nó resultante,
     # Imprimir para o standard output no formato indicado.
 
-    # Ler tabuleiro do ficheiro "i1.txt":
+    # Ler tabuleiro do stdin
     board = parse_instance(sys.argv[1])
-    #board = parse_instance("instances/i10.txt")
 
-    # Criar uma instância de RicochetRobots:
+    # Criar uma instância de RicochetRobots
     problem = RicochetRobots(board)
 
-    # Obter o nó solução usando a procura A*:
-    solution_node = astar_search(problem)
-    
-    solution_actions = []
+    # Obter o nó solução usando a procura recursive_best_first_search:
+    solution_node = recursive_best_first_search(problem)
 
-    while solution_node.action:
-        solution_actions.insert(0, solution_node.action)
-        solution_node = solution_node.parent
-    
-    print(len(solution_actions))
-    for action in solution_actions:
-        print(action[0] + ' ' + action[1])
-
-
+    # Escrever a solucao
+    print_soltuion(solution_node)
 
 
 
